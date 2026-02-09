@@ -4,3 +4,5 @@ pandas
 matplotlib
 pyyaml
 mne
+mne-bids
+scikit-learn

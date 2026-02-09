@@ -1,0 +1,23 @@
+                                            Week 1
+ _______________________________________________________________________________________________________
+
+Fourier Transform
+1. Convert into signal format first before filtering, simple FFT
+
+Basic Filters
+1. Build High and Low Pass filters
+2. Band-Pass; Must define the Hz we desire to keep
+3. Notch Filters maybe
+
+Artifact Filters
+List of Common Artifacts: Eye Blinks (Ocular), Muscle(EMG), Movement/Sways.
+1. Thresholding, reject certain amplitudes
+2. Independent Component Analysis (ICA), 'from sklearn.decomposition import FastICA' as well as use MNE library. 
+3. Finally, Epoch the time we want 
+4. Average across all epochs 
+
+
+                                            Week 2
+ _______________________________________________________________________________________________________
+
+
