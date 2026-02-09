@@ -23,7 +23,7 @@ filter = bandpass(signal_data, 0.5, 30, fs) #again, fs and signal_data, and t ha
 
 plt.figure(figsize=(10, 6))
 plt.plot(t, signal_data, label='Original')
-plt.plot(t, band_filtered, label='Bandpass 0.5-30 Hz')
+plt.plot(t, filter, label='Bandpass 0.5-30 Hz')
 plt.legend()
 plt.xlabel('Time (s)')
 plt.ylabel('Amplitude')
