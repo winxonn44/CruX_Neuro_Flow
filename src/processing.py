@@ -2,12 +2,13 @@ import numpy as np
 import scipy as sp
 import mne 
 import mne_bids
+import matplotlib.pyplot as plt
 
 
 # Need to define tasks for NeuroFlow 
 tasks = []
 
-bids_root = 'data/raw/bids'
+bids_root = 'data/raw/eeg_test1' #choose the test we want
 
 raws = {}
 
@@ -22,3 +23,26 @@ for task in tasks:
     for ch in raw.ch_names:
         if ch not in keep_channels:
             raw.drop_channels(ch)
+
+data = raw.get_data()
+channels = raw.ch_names
+sfreq = raw.info['sfreq']
+print(data.shape)
+print(channels) 
+print(sfreq) # Just some sample information and checks
+
+# Now some FFT and signal working; We still need to define 'x' and 'fs' based on the data in the file.
+
+X = np.fft.fft(x)
+freqs = np.fft.fftfreq(len(X), 1/fs)
+
+half = len(X)//2 # Only keep positive half of the spectrum. Why? Idk. If it breaks then let's fix it
+
+plt.figure(figsize=(10,4))
+plt.plot(freqs[0:half], np.abs(X[0:half]))
+plt.title("Frequency-Domain Spectrum")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Magnitude")
+plt.grid()
+plt.show()
+
