@@ -1,0 +1,29 @@
+Algorithm 1 Pipeline of EEG signal analysis
+Input: EEG signal eeg(t).
+
+ 
+
+procedure Acquisition (eeg(t)):
+     Sampling equipment selection.
+     Choose invasive or noninvasive acquisition.
+     Choose the best reference electrode.
+     Return: EEG data eeg(t).
+ 
+
+procedure Denoising (eeg(t)):
+     Using different denoising methods to process EEG signals.
+     Return: Denoised EEG signal eeg(t)𝑛⁢𝑒⁢𝑤.
+ 
+
+procedure Feature_Engineering (eeg(t)):
+     Perform time–frequency, high-order spectrum analysis or nonlinear analysis.
+     Return: More expressive features, eeg(t).
+ 
+
+procedure Classification (eeg(t), choice):
+     Perform classification tasks based on choice:
+     If choice equal traditional approach do
+          Using KNN, SVM, ... to classify.
+     If choose the same deep learning approach do
+          Using CNN, GAN, ... to classify.
+     Return: Accuracy, precision, etc.

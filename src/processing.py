@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import scipy.signal
 import scipy as sp
 import mne
 import mne_bids
