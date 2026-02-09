@@ -7,7 +7,7 @@ import mne_bids
 import matplotlib.pyplot as plt
 
 
-# Need to define tasks for NeuroFlow 
+# Need to define tasks for NeuroFlow; work shop for CruX did it as tasks = ['eo', 'ec'] for eyes open and closed respectively
 tasks = []
 
 bids_root = 'data/raw/eeg_test1' #choose the test we want
