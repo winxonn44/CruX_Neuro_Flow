@@ -40,6 +40,7 @@ freqs = np.fft.fftfreq(len(X), 1/fs)
 
 half = len(X)//2 # Only keep positive half of the spectrum. Why? Idk. If it breaks then let's fix it
 
+''' just some code to plot the FFT, in case checks are needed
 plt.figure(figsize=(10,4))
 plt.plot(freqs[0:half], np.abs(X[0:half]))
 plt.title("Frequency-Domain Spectrum")
@@ -47,4 +48,6 @@ plt.xlabel("Frequency (Hz)")
 plt.ylabel("Magnitude")
 plt.grid()
 plt.show()
+
+'''
 
