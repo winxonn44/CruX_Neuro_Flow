@@ -1,6 +1,6 @@
 import numpy as np
 import scipy as sp
-import mne 
+import mne
 import mne_bids
 import matplotlib.pyplot as plt
 
