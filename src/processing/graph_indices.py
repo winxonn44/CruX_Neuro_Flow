@@ -1,127 +1,128 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import welch, iirnotch, butter, filtfilt
+from scipy.signal import butter, filtfilt, iirnotch
 import glob
 import os
 
-def calculate_band_power(psd, freqs, low, high):
-    """Calculates average power in a specific frequency band."""
-    idx = np.logical_and(freqs >= low, freqs <= high)
-    return np.mean(psd[idx])
+def plot_with_highlights(filename, fs=250):
+    print(f"Generating Highlighted Graphs for: {filename}...")
 
-def graph_indices(filename, fs=250):
-    print(f"Processing Indices for: {filename}...")
-    
     # 1. LOAD DATA
     try:
-        # Load tab-separated, no header
         df = pd.read_csv(filename, sep='\t', header=None)
-        # Extract Cols 1-8 (indices 1-9 exclusive)
         raw_data = df.iloc[:, 1:9].values
     except Exception as e:
         print(f"Error reading {filename}: {e}")
         return
 
-    # 2. FILTER DATA (High-pass 1Hz + Notch 60Hz)
+    n_samples, n_channels = raw_data.shape
+
+    # 2. FILTERING
     nyquist = fs / 2
-    b_hp, a_hp = butter(2, 1/nyquist, btype='highpass')
-    b_notch, a_notch = iirnotch(60/nyquist, Q=30)
+    b_analysis, a_analysis = butter(4, [0.5 / nyquist, 30.0 / nyquist], btype='bandpass')
+    b_notch, a_notch = iirnotch(60 / nyquist, Q=30)
     
-    filtered_data = np.zeros_like(raw_data)
-    for i in range(8):
-        sig = filtfilt(b_hp, a_hp, raw_data[:, i])
+    clean_data = np.zeros_like(raw_data)
+    for i in range(n_channels):
+        sig = filtfilt(b_analysis, a_analysis, raw_data[:, i])
         sig = filtfilt(b_notch, a_notch, sig)
-        filtered_data[:, i] = sig
+        clean_data[:, i] = sig
 
-    # 3. SLIDING WINDOW ANALYSIS
-    # We calculate metrics every 1 second (overlapping windows)
-    window_size = 2 * fs  # 2-second window for stable PSD
-    step_size = 1 * fs    # 1-second step (update rate)
+    # 3. CALCULATE FFT & INDICES
+    window_size = 1 * fs
+    step_size = 1 * fs
     
-    n_samples = filtered_data.shape[0]
-    
-    # Storage Lists
-    time_points = []
+    timestamps = []
     workload_indices = []
-    engagement_indices = []
-    theta_powers = []
-    alpha_powers = []
-
-    # Channel Map (0-based indices)
-    # Frontal: Fz(0), F1(1), F2(2)
-    # Parietal: Pz(3), P1(4), P2(5)
-    frontal_chs = [0, 1, 2]
-    parietal_chs = [3, 4, 5]
+    accumulated_fft = np.zeros((window_size // 2 + 1, n_channels))
+    valid_epochs = 0
+    
+    FRONTAL = [0, 1, 2] # Fz, F1, F2
+    PARIETAL = [3, 4, 5] # Pz, P1, P2
 
     for start in range(0, n_samples - window_size, step_size):
         end = start + window_size
-        window_data = filtered_data[start:end, :]
+        epoch = clean_data[start:end, :]
         
-        # Calculate PSD for this window
-        freqs, psd = welch(window_data, fs=fs, nperseg=window_size, axis=0)
-        
-        # --- CALCULATE BAND POWERS ---
-        # Frontal Theta (4-8 Hz)
-        f_theta = np.mean([calculate_band_power(psd[:, ch], freqs, 4, 8) for ch in frontal_chs])
-        
-        # Parietal Alpha (8-12 Hz)
-        p_alpha = np.mean([calculate_band_power(psd[:, ch], freqs, 8, 12) for ch in parietal_chs])
-        
-        # Frontal Beta (12-30 Hz) - For Engagement Index
-        f_beta = np.mean([calculate_band_power(psd[:, ch], freqs, 12, 30) for ch in frontal_chs])
+        if np.max(np.abs(epoch)) > 100.0: continue 
 
-        # --- CALCULATE INDICES ---
-        # 1. Workload Index = Theta / Alpha
-        workload = f_theta / p_alpha if p_alpha > 0 else 0
+        # FFT
+        window = np.hanning(window_size)
+        epoch_mags = []
+        for ch in range(n_channels):
+            signal = epoch[:, ch] * window
+            fft_vals = np.fft.rfft(signal)
+            mag = np.abs(fft_vals) / window_size
+            epoch_mags.append(mag)
+        epoch_mags = np.array(epoch_mags).T
         
-        # 2. Engagement Index = Beta / (Theta + Alpha)
-        engagement = f_beta / (f_theta + p_alpha) if (f_theta + p_alpha) > 0 else 0
+        accumulated_fft += epoch_mags
+        valid_epochs += 1
         
-        time_points.append(end / fs) # Timestamp in seconds
-        workload_indices.append(workload)
-        engagement_indices.append(engagement)
-        theta_powers.append(f_theta)
-        alpha_powers.append(p_alpha)
+        # Indices
+        freqs = np.fft.rfftfreq(window_size, d=1.0/fs)
+        def get_pwr(mags, low, high):
+            idx = np.logical_and(freqs >= low, freqs <= high)
+            return np.sum(mags[idx]**2)
 
-    # 4. PLOTTING
-    plt.figure(figsize=(12, 10))
-    
-    # Plot 1: The Indices (The "Score")
-    plt.subplot(3, 1, 1)
-    plt.plot(time_points, workload_indices, label='Workload Index (Theta/Alpha)', color='purple', linewidth=2)
-    plt.plot(time_points, engagement_indices, label='Engagement Index (Beta / Theta+Alpha)', color='orange', alpha=0.7)
-    plt.title(f'Cognitive Indices Over Time - {os.path.basename(filename)}')
-    plt.ylabel('Index Value')
-    plt.legend(loc='upper right')
-    plt.grid(True, alpha=0.3)
-    
-    # Plot 2: Raw Band Powers (Why did the score change?)
-    plt.subplot(3, 1, 2)
-    plt.plot(time_points, theta_powers, label='Frontal Theta (Focus)', color='red')
-    plt.plot(time_points, alpha_powers, label='Parietal Alpha (Relax)', color='blue')
-    plt.title('Underlying Band Powers')
-    plt.ylabel('Power (uV^2/Hz)')
-    plt.legend(loc='upper right')
-    plt.grid(True, alpha=0.3)
-    
-    # Plot 3: Flow Components (Theta vs Alpha)
-    # In Flow, you want HIGH Theta (Red) and MODERATE Alpha (Blue)
-    plt.subplot(3, 1, 3)
-    plt.plot(time_points, theta_powers, label='Focus (Theta)', color='red')
-    plt.plot(time_points, alpha_powers, label='Calm (Alpha)', color='green', linestyle='--')
-    plt.fill_between(time_points, theta_powers, alpha_powers, where=(np.array(theta_powers) > np.array(alpha_powers)), color='yellow', alpha=0.3, label='High Focus Zone')
-    plt.title('Flow Check (Yellow = Focus > Relax)')
-    plt.xlabel('Time (Seconds)')
-    plt.ylabel('Power')
-    plt.legend(loc='upper right')
-    plt.grid(True, alpha=0.3)
+        f_theta = np.mean([get_pwr(epoch_mags[:, ch], 4, 8) for ch in FRONTAL])
+        p_alpha = np.mean([get_pwr(epoch_mags[:, ch], 8, 12) for ch in PARIETAL])
+        
+        wi = f_theta / p_alpha if p_alpha > 0 else 0
+        timestamps.append(end / fs)
+        workload_indices.append(wi)
 
+    if valid_epochs == 0: return
+
+    avg_spectrum = accumulated_fft / valid_epochs
+    freqs = np.fft.rfftfreq(window_size, d=1.0/fs)
+
+    # --- PLOT 1: SPECTRAL REGIONS ---
+    fig, axes = plt.subplots(4, 2, figsize=(15, 12))
+    axes = axes.flatten()
+    chan_labels = ['Fz (Focus)', 'F1', 'F2', 'Pz (Fatigue)', 'P1', 'P2', 'Cz (Flow)', 'O2 (Visual)']
+    
+    for i in range(8):
+        ax = axes[i]
+        ax.plot(freqs, avg_spectrum[:, i], color='#333333', linewidth=1.5)
+        ax.set_title(f'Ch {i+1}: {chan_labels[i]}')
+        ax.set_xlim(1, 30)
+        ax.grid(True, alpha=0.3)
+        
+        # HIGHLIGHT: Theta (Focus)
+        ax.axvspan(4, 8, color='yellow', alpha=0.3, label='Focus (Theta)' if i==0 else "")
+        # HIGHLIGHT: Alpha (Relax)
+        ax.axvspan(8, 12, color='cyan', alpha=0.2, label='Relax (Alpha)' if i==0 else "")
+        
+        if i == 0: ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.suptitle(f'FFT with Highlighted Regions - {os.path.basename(filename)}', y=1.02)
+    plt.show()
+
+    # --- PLOT 2: FOCUS ZONEzS IN TIME ---
+    plt.figure(figsize=(12, 5))
+    plt.plot(timestamps, workload_indices, label='Workload Index', color='purple', linewidth=2)
+    
+    # Dynamic Threshold for "High Focus"
+    threshold = np.mean(workload_indices) + 0.5 * np.std(workload_indices)
+    plt.axhline(threshold, color='green', linestyle='--', label='Focus Threshold')
+    
+    # HIGHLIGHT: Fill area above threshold
+    plt.fill_between(timestamps, workload_indices, threshold, 
+                     where=(np.array(workload_indices) >= threshold),
+                     interpolate=True, color='green', alpha=0.3, label='Focus Zone')
+
+    plt.title(f'Focus Zones Over Time - {os.path.basename(filename)}')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Workload Index')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
 
-# --- RUN ON FILES ---
-if __name__ == "__main__":
-    files = glob.glob("data\\raw\\*.csv")
-    for f in files:
-        graph_indices(f)
+# Run
+files = glob.glob("data\\raw\\*.csv")
+for f in files:
+    plot_with_highlights(f)
