@@ -159,7 +159,7 @@ def real_time_focus_monitor():
             is_focused = ratio > threshold
             status_text = "!!! FOCUS !!!" if is_focused else "RELAXED"
             
-            # --- FOCUS STATE LOGIC ---
+            # FOCUS STATE LOGIC
             if is_focused:
                 focus_timestamps.append(current_time)
                 
@@ -176,7 +176,7 @@ def real_time_focus_monitor():
                 session_end_time = current_time + FOCUS_DURATION_SECONDS
                 focus_timestamps.clear() 
             
-            # TIMER CHECK LOGIC ---
+            # TIMER CHECK LOGIC
             # If a session is active and the timer has expired, toggle off
             if session_active and current_time > session_end_time:
                 send_discord_alert("**Focus block complete.** Great work! Standing by for next focus state.")
