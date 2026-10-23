@@ -11,27 +11,7 @@ DIFFICULTY = 0.75
 FOCUS_DURATION_SECONDS = 5 * 60  # 5 minutes
 
 # Paste your Discord Webhook URL here
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1476432420612870274/Q6AlsJt2ct02tVHEJzLfR2K2yyTx9Xv8U0HbnBaRtXkK5UD38X0IWMlaFlCp8gEM5Kq0"
 
-# Example API/webhook function
-def send_discord_alert(message):
-    # Sends a message to a Discord channel via Webhook.
-    if DISCORD_WEBHOOK_URL == "YOUR_DISCORD_WEBHOOK_URL_HERE":
-        print("[API] Error: Please set your DISCORD_WEBHOOK_URL in the configuration.")
-        return
-
-    payload = {
-        "content": message,
-        "username": "BrainFlow Bot",
-        "avatar_url": "https://cdn-icons-png.flaticon.com/512/2099/2099058.png"
-    }
-    
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
-        response.raise_for_status()
-        print(f"\n[DISCORD] Sent: {message}")
-    except Exception as e:
-        print(f"\n[DISCORD ERROR] Failed to send message: {e}")
 
 def get_focus_metric(data, board_id, fs):
     # Helper function to process data and return the Workload Index.
